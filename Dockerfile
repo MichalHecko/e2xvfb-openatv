@@ -184,12 +184,26 @@ COPY vsftpd.conf /etc/
 RUN mkdir -p /var/run/vsftpd/empty
 RUN sed -i '/root/d' /etc/ftpusers
 
+# Hacks to make enigma2 boot in Docker
+RUN sed -i '/wizardManager\.registerWizard(VideoWizard, config\.misc\.videowizardenabled\.value, priority=1)/s/^/#/' \
+    /usr/lib/enigma2/python/Screens/StartWizard.py
+
+RUN sed -i '/list\.append(PluginDescriptor(name=_("Network Wizard"), where=PluginDescriptor\.WHERE_WIZARD, needsRestart=False, fnc=(25, NetworkWizard)))/s/^/#/' \
+    /usr/lib/enigma2/python/Plugins/SystemPlugins/NetworkWizard/plugin.py
+
+RUN iconv -f UTF-8 -t ASCII//TRANSLIT /usr/share/enigma2/groupedservices > /tmp/groupedservices.ascii \
+    && mv /tmp/groupedservices.ascii /usr/share/enigma2/groupedservices
+
+# Receiver
 RUN mkdir -p /usr/share/enigma2/receiver
 COPY test.png /usr/share/enigma2/receiver
 COPY test_front.png /usr/share/enigma2/receiver
+
 COPY entrypoint.sh /opt
 RUN chmod 755 /opt/entrypoint.sh
+
 ENV DISPLAY=:99
 EXPOSE 5900 80 81 21 22 20
+
 ENTRYPOINT ["/opt/entrypoint.sh"]
 CMD bash
