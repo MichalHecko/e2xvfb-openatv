@@ -31,9 +31,12 @@ docker exec -e ENIGMA_DEBUG_LVL=5 enigma2_box enigma2
 ```
 > After language selection you have to run enigma2 with command above once again
 
-Then you can connect to VNC with for example TigerVNC.
+Then you can connect to VNC for example with TigerVNC.
 
-
+<p align="center">
+  <img height="200px" src="docs/img01.png"/>
+  <img height="400px" src="docs/img02.png"/>
+</p>
 
 Finally, to stop and remove the container use
 ```bash
