@@ -1,6 +1,9 @@
 FROM ubuntu:24.04
 
 ARG DEBIAN_FRONTEND=noninteractive
+ARG OPKG_VER="0.7.0"
+ARG OPENATV_BRANCH="7.5"
+
 ENV TZ=Europe/Berlin
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 RUN apt update
@@ -36,8 +39,8 @@ RUN rm /usr/bin/pydoc3 && ln -sf /usr/bin/pydoc3.12 /usr/bin/pydoc3
 
 RUN apt-get install -y python3-pip
 
-RUN pip3 install wifi CT3 pillow treq future netifaces cffi puremagic tmdbsimple tvdbsimple tinytag  --break-system-packages
-RUN pip3 install mutagen --break-system-packages
+RUN pip3 install wifi CT3 pillow treq future netifaces cffi puremagic tmdbsimple tvdbsimple tinytag  --ignore-installed --break-system-packages
+RUN pip3 install mutagen --ignore-installed --break-system-packages
 
 WORKDIR /work
 
@@ -45,39 +48,38 @@ RUN git clone --depth 1 https://github.com/oe-alliance/libdvbsi.git
 RUN cd libdvbsi \
   && ./autogen.sh \
   && ./configure --prefix=/usr \
-  && make \
+  && make -j"$(nproc)" \
   && make install
 
 RUN git clone --depth 1 https://github.com/oe-alliance/tuxtxt.git
 RUN cd tuxtxt/libtuxtxt \
   && autoreconf -i \
   && CPP="gcc -E -P" ./configure --with-boxtype=generic --prefix=/usr \
-  && make \
+  && make -j"$(nproc)" \
   && make install
 
 RUN cd tuxtxt/tuxtxt \
   && autoreconf -i \
   && CPP="gcc -E -P" ./configure --with-boxtype=generic --prefix=/usr \
-  && make \
+  && make -j"$(nproc)" \
   && make install
 
-ARG OPKG_VER="0.7.0"
 RUN curl -L "http://downloads.yoctoproject.org/releases/opkg/opkg-$OPKG_VER.tar.gz" -o opkg.tar.gz
 RUN tar -xzf opkg.tar.gz
 RUN cd "opkg-$OPKG_VER" \
   && ./configure --enable-gpg --disable-curl --prefix=/usr --sysconfdir=/etc \
-  && make \
+  && make -j"$(nproc)" \
   && make install
 
 
-RUN git clone --depth 1 https://github.com/openatv/enigma2.git
+RUN git clone --depth 1 -b $OPENATV_BRANCH https://github.com/openatv/enigma2.git
 COPY ax_python_devel.m4 /work/enigma2/m4/ax_python_devel.m4
 RUN cd enigma2 \
   && sed -i "s/sigc++-2.0/sigc++-3.0/g" ./configure.ac \
   && sed -i "s/sigc++-2.0/sigc++-3.0/g" ./enigma2.pc.in \
   && ./autogen.sh \
   && ./configure --with-libsdl --with-gstversion=1.0 --prefix=/usr --sysconfdir=/etc --with-boxtype=dm920 \
-  && make -j4 \
+  && make -j"$(nproc)" \
   && make install
 RUN ldconfig
 
@@ -85,8 +87,8 @@ RUN git clone --depth 10 https://github.com/oe-mirrors/branding-module.git
 COPY ax_python_devel.m4 branding-module/m4/ax_python_devel.m4
 RUN cd branding-module \
   && autoreconf -i \
-  && ./configure --prefix=/usr --with-imageversion="7.4" \
-  && make \
+  && ./configure --prefix=/usr --with-imageversion="7.5" \
+  && make -j"$(nproc)" \
   && make install
 
     
@@ -146,8 +148,7 @@ RUN cd e2openplugin-EnhancedMovieCenter \
   && make install
 
 COPY enigma.info /usr/lib/enigma.info
-
-COPY process.py /usr/lib/python3.12/site-packages/process.py
+COPY process.py /usr/lib/python3/dist-packages/process.py
 
 
 # OPKG
@@ -158,7 +159,7 @@ RUN mkdir -p /etc/opkg && mkdir -p /var/lib/opkg/lists && mkdir -p /var/lib/opkg
   && echo "arch all 1" > /etc/opkg/arch.conf \
   && echo "arch any 6" >> /etc/opkg/arch.conf \
   && echo "arch noarch 11" >> /etc/opkg/arch.conf \
-  && echo "src/gz openatv-all http://feeds2.mynonpublic.com/7.4/vusolo4k/all" >> /etc/opkg/all-feed.conf \
+  && echo "src/gz openatv-all http://feeds2.mynonpublic.com/7.5/vusolo4k/all" >> /etc/opkg/all-feed.conf \
   && echo "src/gz oe-alliance-settings-feed https://raw.githubusercontent.com/oe-alliance/oe-alliance-settings-feed/master/feed" >> /etc/opkg/oe-alliance-settings-feed.conf
 
 COPY opkg.py /work/opkg.py
